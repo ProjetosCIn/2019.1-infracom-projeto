@@ -1,9 +1,11 @@
 # Author: Thiago Augusto - tasm2
 # IF678 - Infraestrutura de Comunicação 2019.1 
+# Miniprojeto Sockets
 
 import sys
 import socket
 import traceback
+import os
 
 serverName = "localhost"
 serverPort = 2080
@@ -20,42 +22,35 @@ def main():
 
 def getClientData():
     try:
+        print("Hello, welcome to DOWNLOAD-UPLOAD\n")
         while 1:
-            print("Hello, welcome to DOWNLOAD-UPLOAD\n")
-            print("What do you want to do?\
-                            \n\t1-Download\n\t2-Upload")
+            print("\nWhat do you want to do?\
+                            \n\t1-Download\n\t2-Upload\n\t3-GETPROG(Download and Execute)")
             print("Type anything else to get out of the program\n")
-            choice = int(input(":"))
-            
-            if(choice == 1):
+            choice = input(":")
+
+            if(choice == "1" or choice == "3"):
                 print("\nWhat is the file you want to Download?\n")
                 fileName = input(":")
                 
                 print("\nWhat is the name you want to save it?\n")
                 outputName = input(":")
                 
-                print("GO TO CONNET")
-                #sentence = args.message
-                #clientSocket.sendall("GET / HTTP/1.1\r\n\r\n")
-                print("B TO SEND")
-                header = "GET /"+ fileName +" HTTP/1.1"
-                print("GOIN TO SEND")
-                print(header)
-                clientSocket.sendall(header.encode()) #utf8
-                #clientSocket.send(fileName.encode())
-                print("OI")
+                header = "GET /"+ fileName +" HTTP/1.1\n"
+                contentLength = "Content-Length: 0\n"
+                header = header + contentLength
+                clientSocket.sendall(header.encode()) 
+                
+                #Only to send back the response from getting header
                 responseHeader = clientSocket.recv(1024).decode()
-                print("Response", responseHeader)
+                
                 clientSocket.sendall(header.encode())
                 responseHeader = responseHeader.split('\n')
                 responseStatus = responseHeader[0].split(' ')[1]
                 contentLength = int(responseHeader[1].split(' ')[1])
 
-                print("Status", responseStatus,"Length", contentLength)
-                # It recieve a ok data load
                 if(responseStatus == "200"):   
                     # The data are arriving in chuncks of bytes, in bits encoded
-
                     response = b''
                     while True:
                         data = clientSocket.recv(1024)
@@ -64,16 +59,30 @@ def getClientData():
                         if(len(response) >= contentLength): break
                     with open(outputName, 'wb') as f:
                         f.write(response)
-                    print(outputName + " file created!")
+                    print("\n"+ outputName + " file created!")
                 elif(responseStatus == "404"):
-                    print("Error 404\nTry again!\n")
-
+                    print("\nError 404\nTry again!\n")
                 
-            elif(choice == 2):
-                pass
+                if(choice == "3"):
+                    os.system('chmod +x ' + outputName)
+                    os.system('./' + outputName)
+                
+            elif(choice == "2"):
+                print("\nWhat is the file you want to Upload?\n")
+                fileName = input(":")
+
+                header = "SEND /"+ fileName +" HTTP/1.1\n"
+                contentLength = "Content-Length: "+ str(fileSize(fileName)) + "\n"
+                header = header + contentLength
+                clientSocket.sendall(header.encode()) 
+                clientSocket.recv(1024)
+                
+                sendFile(fileName, clientSocket)
+                print("\nYour file ", fileName, " was uploaded!")
+            
             else:
                 print("See ya!")
-
+                break
 
         clientSocket.close()
 
@@ -87,5 +96,14 @@ def getClientData():
 
     clientSocket.close()
     print("\nBye bye :)")
+
+def sendFile(fileName, socket):
+
+    with open(fileName, 'rb+') as f:
+        data = f.read()
+        socket.sendall(data)
+
+def fileSize(fname):
+    return os.stat(fname).st_size
 
 main()
